@@ -1,6 +1,8 @@
 import csv
 from datetime import datetime
 def read_data(path, id) :
+
+    # allows for 1000 ids
     id *= 1000
     file = open(path, 'r')
 
@@ -11,7 +13,6 @@ def read_data(path, id) :
     cur_id = 0
     last_id = None
     data = []
-
 
     day_dict = {}
     total_days = 0
@@ -94,8 +95,6 @@ def read_dod(path, id) :
 
     return data
 
-
-
 def main() :
     folder = "./ema_nback/"
     chile = read_data(folder + "chile_nback.csv",1)
@@ -104,7 +103,7 @@ def main() :
     func = read_data(folder + "func_nback.csv",5)
     gsur = read_data(folder + "gsur_nback.csv",6)
     ucd = read_data(folder + "ucd_nback.csv",7)
-    #ihs = read_data(folder + "ihs_nback.csv",8)
+    #ihs = read_data(folder + "ihs_nback.csv",8) not used because has missing time values
     
 
     all_data = chile + dod + fau + func + gsur + ucd #+ ihs
