@@ -214,13 +214,42 @@ def read_data(path, id, delims,date_format,functions) :
     return data
 
 def in_delim(delims, str) :
+    """
+        Checks if a delim is in the str
+    
+        Parameters
+        ----------
+
+        delims : [str]
+            Delims to check
+        str: str
+            Line wanted to be checked
+
+        Returns
+        ----------
+
+        bool
+            True if a delim in str
+    """
     for delim in delims :
         if delim in str :
             return True
     return False
 
-def verify_better(path, delims,triggers=None) :
+def verify_better(path:str, delims:[str],triggers:[str]=None) :
+    """
+        Prints out stats of given file
     
+        Parameters
+        ----------
+        path : str
+            Path to csv file
+        delims : [str]
+            Cognitive question delims to look for
+        triggers: [str]
+            List of propmt triggers to keep data when present
+    
+    """
     # open file, skip header
     file = open(path, 'r')
     file.readline()
@@ -279,7 +308,6 @@ def verify_better(path, delims,triggers=None) :
     prompt_successes = [0,0]
 
     # goes through each line
-    fc=0
     while line != '':
         if total_questions > 17000 :
             s = 1
@@ -304,6 +332,7 @@ def verify_better(path, delims,triggers=None) :
         else :
             prompt_type[1] += 1
 
+        # checks that its in given [random,manual]
         if triggers != None and cur_data[0][3] not in triggers:
             continue
         
@@ -325,11 +354,13 @@ def verify_better(path, delims,triggers=None) :
                 day_dict[time.day] = total_days
                 total_days += 1
 
-
+            # add 1 to amount question appears
             if question_freqs.get(row[-2]) == None :
                 question_freqs[row[-2]] = 0
             question_freqs[row[-2]] += 1 
             
+            # check if response is empty, and make sure it should not be filtered
+            # true when the response is missing
             if (row[-1] == '\n' or row[-1] == '') and not filter_line(cur_data, row) :
                 day = day_dict[time.day] 
 
@@ -345,6 +376,7 @@ def verify_better(path, delims,triggers=None) :
                 
                 all_times[t + (day*24)] += 1
 
+                # if error found for the first time in response
                 if not error_found :
                     fail_lengths[len(cur_data)-1] += 1
                     if len(cur_data) < 4:
@@ -355,10 +387,12 @@ def verify_better(path, delims,triggers=None) :
                     error_found = True
                 question_errors += 1
 
+                # total error freq
                 if error_freqs.get(row[-2]) == None :
                     error_freqs[row[-2]] = 0
                 error_freqs[row[-2]] += 1 
                 
+                # check if cog question
                 if in_delim(delims, row[-2]):
                     cog_errors += 1
                     cog_hourly_times[t] += 1
@@ -369,8 +403,6 @@ def verify_better(path, delims,triggers=None) :
                     
                     cog_all_times[t + (day*24)] += 1
             else :
-                if filter_line(cur_data, row) :
-                    fc+=1
                 day = day_dict[time.day] 
 
                 # get hour on 8-21 scale
@@ -384,6 +416,8 @@ def verify_better(path, delims,triggers=None) :
                     adjusted_day_times_responded[t2-8] += 1
                 
                 all_times_responded[t + (day*24)] += 1
+
+                # check if cog question
                 if in_delim(delims, row[-2]) :
                     cog_question_total += 1
                     cog_hourly_times_responded[t] += 1
@@ -394,30 +428,40 @@ def verify_better(path, delims,triggers=None) :
                     
                     cog_all_times_responded[t + (day*24)] += 1
 
+            # increment how many questions responded to so far
             total_questions += 1
             if in_delim(delims, row[-2]) :
                 cog_question_total += 1
 
+        # if no error found in any line of response, success
         if not error_found :
             if cur_data[0][3] == 'random' :
                 prompt_successes[0] += 1
             else :
                 prompt_successes[1] += 1
+        
+        # increment number of prompt size appearing
         if len(cur_data) < 4 :
             single_prompts[0] += 1
         else :
             big_prompts[0] += 1
+        
+        # total prompts appearing
         total_prompts += 1
         total_lengths[len(cur_data) -1] += 1
     
     i = len(adjusted_day_times)-1
+
+    # no errors appeared
     if question_errors == 0 :
-        print("NOTHING WRONG")
+        print("No missing responses!")
         return
+
     # remove all extra empty days
     while adjusted_day_times[i] == 0:
         del adjusted_day_times[i]
         i-=1
+
     i = len(adjusted_day_times_responded)-1
     while adjusted_day_times_responded[i] == 0 :
         del adjusted_day_times_responded[i]
@@ -430,27 +474,25 @@ def verify_better(path, delims,triggers=None) :
         i -=1
     
     # # graph all missed times 8:00-21:00
-    # plt.bar(np.arange(0,len(all_times)), all_times,color='r')
-    # plt.bar(np.arange(0, len(all_times_responded)), all_times_responded,bottom=all_times,color='b')
-    # plt.title("Response Times over Study")
-    # plt.legend(["Missed", "Responded"])
-    # plt.xlabel("Time (Days)")
-    # ticks = [i for i in range(len(all_times)) if i % 24 == 0] # for use in entire study graph
-    # plt.xticks(ticks, np.array(ticks) // 24)
-    # plt.ylabel("Number Questions")
-    # plt.show()
+    plt.bar(np.arange(0,len(all_times)), all_times,color='r')
+    plt.bar(np.arange(0, len(all_times_responded)), all_times_responded,bottom=all_times,color='b')
+    plt.title("Response Times over Study")
+    plt.legend(["Missed", "Responded"])
+    plt.xlabel("Time (Days)")
+    ticks = [i for i in range(len(all_times)) if i % 24 == 0] # for use in entire study graph
+    plt.xticks(ticks, np.array(ticks) // 24)
+    plt.ylabel("Number Questions")
+    plt.show()
 
     # # graph all missed times over day
-    # plt.bar(np.arange(0,len(hourly_times)), hourly_times,color='r')
-    # plt.bar(np.arange(0, len(hourly_times_responded)), hourly_times_responded,bottom=hourly_times,color='b')
-    # plt.legend(["Missed", "Responded"])
-    # plt.title("Response Times over Day")
-    # plt.xlabel("Time (Days)")
-    # plt.xticks([0, 3, 6, 9, 12, 15, 18, 21, 24], ['12 am', '3 am', '6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm','12 am'])
-    # #ticks = [i for i in range(len(all_times)) if i % 24 == 0] # for use in entire study graph
-    # #plt.xticks(ticks, np.array(ticks) // 24)
-    # plt.ylabel("Number Questions")
-    # plt.show()
+    plt.bar(np.arange(0,len(hourly_times)), hourly_times,color='r')
+    plt.bar(np.arange(0, len(hourly_times_responded)), hourly_times_responded,bottom=hourly_times,color='b')
+    plt.legend(["Missed", "Responded"])
+    plt.title("Response Times over Day")
+    plt.xlabel("Time (Days)")
+    plt.xticks([0, 3, 6, 9, 12, 15, 18, 21, 24], ['12 am', '3 am', '6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm','12 am'])
+    plt.ylabel("Number Questions")
+    plt.show()
 
     # graph all missed times 8:00-21:00
     plt.bar(np.arange(0,len(cog_all_times)), cog_all_times,color='r')
@@ -464,16 +506,14 @@ def verify_better(path, delims,triggers=None) :
     plt.show()
 
     # # graph all missed times over day
-    # plt.bar(np.arange(0,len(cog_hourly_times)), cog_hourly_times,color='r')
-    # plt.bar(np.arange(0, len(cog_hourly_times_responded)), cog_hourly_times_responded,bottom=cog_hourly_times,color='b')
-    # plt.legend(["Missed", "Responded"])
-    # plt.title("Response Times over Day (EMA)")
-    # plt.xlabel("Time (Days)")
-    # plt.xticks([0, 3, 6, 9, 12, 15, 18, 21, 24], ['12 am', '3 am', '6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm','12 am'])
-    # #ticks = [i for i in range(len(all_times)) if i % 24 == 0] # for use in entire study graph
-    # #plt.xticks(ticks, np.array(ticks) // 24)
-    # plt.ylabel("Number Questions")
-    # plt.show()
+    plt.bar(np.arange(0,len(cog_hourly_times)), cog_hourly_times,color='r')
+    plt.bar(np.arange(0, len(cog_hourly_times_responded)), cog_hourly_times_responded,bottom=cog_hourly_times,color='b')
+    plt.legend(["Missed", "Responded"])
+    plt.title("Response Times over Day (EMA)")
+    plt.xlabel("Time (Days)")
+    plt.xticks([0, 3, 6, 9, 12, 15, 18, 21, 24], ['12 am', '3 am', '6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm','12 am'])
+    plt.ylabel("Number Questions")
+    plt.show()
     
     # get 8-21 data points, make features
     hourly_times = hourly_times[8:21]
@@ -507,26 +547,46 @@ def verify_better(path, delims,triggers=None) :
         print(f'{k}   {failures}/{v}')
     print('-----------')
 
+    # print all calculated fields
     print(f"Path:{path}, cog error, all error: {cog_errors}/{cog_question_total} {question_errors}/{total_questions}, cog ratio: {cog_ratio}, all ratio: {all_ratio}")
     print(f"Prompt error: {prompt_errors}/{total_prompts}, ratio: {prompt_ratio}")
     print(f"Prompt sizes: small {single_prompts[1]}/{single_prompts[0]}, big: {big_prompts[1]}/{big_prompts[0]}")
-    print(fail_lengths)
-    print(total_lengths)
-    print(prompt_type, (prompt_type[0]/(prompt_type[0] + prompt_type[1])))
-    print(prompt_successes, (prompt_successes[0]/(prompt_successes[0] + prompt_successes[1])))
+    print("random vs manual",prompt_type, (prompt_type[0]/(prompt_type[0] + prompt_type[1])))
+    print("successful response of random vs manual", prompt_successes, (prompt_successes[0]/(prompt_successes[0] + prompt_successes[1])))
 
 def check_lines(lines, delim, threshold) :
-    for l in lines :
-        if delim in l[-2] and l[-1] != '\n':
+    """
+        Checks if prompt contains a question with a response above a threshold
+    
+        Parameters
+        ----------
+        lines : [str]
+            Current response lines to check
+        delim : str
+            Question to check
+        threshold : function
+            Threshold function to apply to line
+
+        Returns
+        -------
+        bool
+            True if prompt has question with high threshold value
+    
+    """
+
+    # go through each line
+    for line in lines :
+        # if question present and theres a response
+        if delim in line[-2] and line[-1] != '\n':
+            # get threshold value
             try :
-                value = int(l[-1][1])
+                value = int(line[-1][1])
                 return threshold(value)
             except :
-                return threshold(l[-1])
+                return threshold(line[-1])
     return False
 
 def filter_fau(lines, line) :
-    #ucd: no filters
     threshold = lambda x : x >= 0
     if 'motivated' in line[-2] or 'environment' in line[-2]:
         return check_lines(lines, 'anxious', threshold)
@@ -572,8 +632,23 @@ def filter_dod(lines, line) :
     
     return False
 
-
 def filter_line(lines, line) :
+    """
+        Checks if line should be skipped if no response
+    
+        Parameters
+        ----------
+        line : str
+            Current line to check
+        lines : [str]
+            Current prompt lines to check
+
+        Returns
+        -------
+        bool
+            True if line has question which should be skipped
+    
+    """
     if 'emma' in line[2] :
         return filter_dod(lines ,line)
     elif 'dyad' in line[2] :
@@ -601,10 +676,12 @@ dod_format = "%m/%d/%Y %H:%M:%S"
 default_functions = [same,six,six]
 default_delims = ["sharp", "fatigue", "stress"]
 
-#quickcheck(folder2 + 'rwcs_ema.csv')
-
 normal_triggers = ['random', 'after_proximity']
-# verify_better('./mega.csv', ["sharp", "fatigue", "anxious", "independent", "over-", "motivated", "stress", "confident", "going"],triggers=normal_triggers) #
+
+# print stats of all files
+verify_better('./mega.csv', ["sharp", "fatigue", "anxious", "independent", "over-", "motivated", "stress", "confident", "going"],triggers=normal_triggers) #
+
+### uncomment to verify each individual file
 
 # verify_better(folder2 + 'dod_ema.csv', ["sharp", "independent", "over"],triggers=normal_triggers)
 # verify_better(folder2 + 'dyad_ema.csv', ["confident", "going", "anxious"],triggers=normal_triggers)
@@ -615,9 +692,7 @@ normal_triggers = ['random', 'after_proximity']
 # verify_better(folder2 + 'rwcs_ema.csv', default_delims,triggers=normal_triggers)
 # verify_better(folder2 + 'ucd_ema.csv', default_delims,triggers=normal_triggers)
 
-# rwcs = read_prompts(folder + "rwcs_ema.csv", 8, ["sharp", "fatigue", "stress"], default_format)
-# gsur_2 = read_prompts(folder + "gsur_2.0_ema.csv", 6, ["sharp", "fatigue", "stress"], default_format)
-
+# read all files
 chile = read_data(folder + "chile_ema.csv", 1, default_delims, default_format,[rnd,six_rnd,six_rnd]) 
 dod = read_data(folder + "dod_ema.csv", 2, ["sharp", "independent", "over"],dod_format,[rnd,rnd,six_rnd])   
 dyad = read_data(folder + "dyad_ema.csv", 3, ["confident", "going", "anxious"], default_format,[add,add,six_add])    
@@ -629,10 +704,12 @@ rwcs = read_data(folder + "rwcs_ema.csv", 8, default_delims, default_format,defa
 
 ihs = read_ihs(folder + "ihs_ema.csv", 9)
 
+# concat all data
 all_data = chile + dod + dyad + fau + func + gsur + ucd + rwcs #+ ihs
 
 file = open('ema_new.csv', 'w',newline="")
 
+# save all data to single file
 writer = csv.writer(file)
 writer.writerow(["id", "time_elapsed", "minute", "hour", "day","response_time","sharp","fatigue","stress"])
 writer.writerows(all_data)
