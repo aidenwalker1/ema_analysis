@@ -4,9 +4,13 @@
 Compute all emas: reads emas (questions about how someone is feeling) into csv file, also analyzes response rate
 
 -Reads EMA response files from various studies in a given folder.
+
 -Cleans up data and transforms data, removes empty entries
+
 -Saves cleaned up data to ./ema_new.csv
+
 -Also includes functionality to verify the responses, and graph statistical features of the response rates
+
 
 To run:
 
